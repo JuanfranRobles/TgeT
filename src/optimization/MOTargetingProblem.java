@@ -50,7 +50,6 @@ public class MOTargetingProblem extends AbstractDoubleProblem{
 	}
 	@Override
 	public void evaluate(DoubleSolution solution) {
-
 		double wd = solution.getVariableValue(0);
 		double w2s = solution.getVariableValue(1);
 		double wcc = solution.getVariableValue(2);

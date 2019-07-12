@@ -25,6 +25,8 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import configuration.Reader;
+import model.statistics.Statistics;
+import model.statistics.StatisticsFunctions;
 import socialnetwork.SocialNetwork;
 import util.SeedContainer;
 import util.SynchronizedMersenneTwister;
@@ -75,7 +77,7 @@ public class Market {
 	private boolean mo = false;
 	private Randomizer g;
 	private Reader configuration;
-	private Indicator metric; 
+	private Statistics statistics; 
 	private int numMC; 
 	private boolean randomSeedSelection = false; 
 	
@@ -104,7 +106,7 @@ public class Market {
 		extended = this.configuration.getParameterBoolean("extended_model");
 		optimization = this.configuration.getParameterBoolean("optimize");
 		mo = this.configuration.getParameterBoolean("multiobjective");
-		metric = new Indicator();
+		statistics = new Statistics(this);
 		numMC = this.configuration.getParameterInteger("monte_carlos");
 		
 	}
@@ -580,7 +582,7 @@ public class Market {
 	}
 	
 	/* --------- Information exchange and consumption processes ---------- */
-	private void consumptionProcess(double [] [] utils, double [] [] uncts){
+	private void consumptionProcess(double [] [] utils, double [] [] uncts, int step){
 		
 		int [] huse = new int[4];
 		double conttruecustomers = 0;
@@ -615,8 +617,8 @@ public class Market {
 				}
 			}
 		}
-		this.metric.setMeanCustomers(conttruecustomers / (double) this.getCustomers().length);
-		this.metric.setHeuristicsUse(huse);
+		this.statistics.setMeanCustomers(conttruecustomers / (double) this.getCustomers().length, step);
+		this.statistics.setHeuristicsUse(huse, step);
 	}
 	
 	public void speak(int coneid){
@@ -689,12 +691,10 @@ public class Market {
 		double [] [] uncertainties = new double [this.getCustomers().length] [this.getProducts().length];
 		
 		// Time control.
-		double start;
-		double end;
-		double total = 0.0;
+		long start = System.currentTimeMillis();;
 		
 		for(int step = 0; step < this.getSteps(); step++){
-			start = System.currentTimeMillis();
+
 			if(step == 0){
 				this.calculateutilsanduncts(utilities, uncertainties);
 			}
@@ -706,28 +706,22 @@ public class Market {
 				this.decayStage();
 			}
 			
-			this.consumptionProcess(utilities, uncertainties);				
+			this.consumptionProcess(utilities, uncertainties, step);				
 			
 			this.setConsumptions(nextchoices); // Setting next choices.
 			
 			// Calculating turbulence.
-			turbulence += metric.calculateTurbulence(pastchoices, nextchoices);
+			statistics.setTurbulence(StatisticsFunctions.calculateTurbulence(pastchoices, nextchoices), step);
 			// Calculating buy probabilities.
-			this.metric.setFinalBuyProb(this.getCustomers());
+			this.statistics.setFinalBuyProb(this.getCustomers(), step);
 			
 			this.calculateutilsanduncts(utilities, uncertainties);
 			
-			// Calculating Gini coefficient using the last 10 executions.
-			if (step > this.getSteps() - 10)
-				gini += metric.calculateGini(this.getCustomers());
-			
-			end = System.currentTimeMillis();
-			total += (end - start) / 1000.0;
+			// Calculating Gini.
+			statistics.setGini(StatisticsFunctions.calculateGini(this.getCustomers()), step);
+
 		}
-		this.metric.setExecutionTime(total / (double) this.getSteps());
-		this.metric.setGini(gini / 10.0);
-		this.metric.setTurbulence(turbulence / (double) this.getSteps());
-		this.metric.setFinaBuys(this.getCustomers());
+		statistics.setExecutionTime(System.currentTimeMillis() - start);
 	}
 	/**------- Methods for viral marketing optimization ------------ */
 	private int [] selectSeeds(double [] metricweights){
@@ -856,7 +850,6 @@ public class Market {
 					
 			double [] [] utilities = new double [this.getCustomers().length] [this.getProducts().length];
 			double [] [] uncertainties = new double [this.getCustomers().length] [this.getProducts().length];
-			this.metric.setFinaBuys(this.getCustomers());
 
 			for(int step = 1; step < this.getSteps(); step++){
 				//System.out.println("Step " + step);
@@ -873,12 +866,12 @@ public class Market {
 				}
 	
 				if ((step % stationality) == 0){
-					this.consumptionProcess(utilities, uncertainties);				
+					this.consumptionProcess(utilities, uncertainties, step);				
 				}
 				
 				this.setConsumptions(nextchoices); // Setting next choices.
 				
-				this.metric.setFinaBuys(this.getCustomers());
+				statistics.setFinaBuys(this.getCustomers(), step);
 	
 				// Calculating turbulence.
 				turbulence += metric.calculateTurbulence(pastchoices, nextchoices);
