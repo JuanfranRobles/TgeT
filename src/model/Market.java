@@ -62,24 +62,34 @@ public class Market {
 	
 	// Attributes for the basic market model.
 	private SocialNetwork sn; // Social Network.
-	private Customer [] customers; // Market customers.
+	private Customer [] customers; // Market consumers.
 	private Product [] products; // Market products.
+	// Consumat market variables. 
 	private double alpha;
 	private double b1;
 	private double b2;
-	private double buyprob;
-	private int time;
-	private int stationality; 
-	private boolean type = false;
-	private int product_visibility; 
-	private boolean extended = false;
-	private boolean optimization = false;
-	private boolean mo = false;
+	private double buyprob; // Buy probability for consumers. 
+	private int time; // Simulation steps. 
+	private int stationality; // Consumption frequency. 
+	private boolean type = false; // True agent's variables are initialized randomly. False if not. 
+	private int product_visibility; // Product visibility among customers. 
+	private boolean extended = false; // If market model includes an awareness mechanism for consumers or not. 
+	// If this market will be used to optimize Viral Marketing campaigns. 
+	// - True creates a new market model with P + 1 products to include a new product to optimize. 
+	// - False creates a new market model with P products. 
+	private boolean optimization = false; 
+	private boolean mo = false; 
+	// Random numbers generator. 
 	private Randomizer g;
+	// Configuration file reader. 
 	private Reader configuration;
+	// Structure to store simulation statistics. 
 	private Statistics statistics; 
-	private int numMC; 
+	
 	private boolean randomSeedSelection = false; 
+	// Optional parameters. Only activated when optimization 
+	// flag is true.
+	private double [] optimizationWeights; 
 	
 	/* -------------- Constructors ------------------- */
 	
@@ -805,7 +815,8 @@ public class Market {
 		}
 		return npv;
 	}
-	public double [] run(double [] metricweights){
+
+	public void run(){
 		
 		// Time control.
 //		double start;
@@ -828,10 +839,10 @@ public class Market {
 			int [] selectedSeeds; 
 			
 			if(this.isRandomSeedSelection()) {
-				selectedSeeds = selectSeedsAtRandom((int)metricweights[metricweights.length - 1]);
+				selectedSeeds = selectSeedsAtRandom((int)optimizationWeights[optimizationWeights.length - 1]);
 			}
 			else {
-				selectedSeeds = selectSeeds(metricweights);
+				selectedSeeds = selectSeeds(optimizationWeights);
 			}
 			// If we will optimize the model we need to initialize the seeds
 			for (Integer seed: selectedSeeds){
@@ -903,15 +914,15 @@ public class Market {
 		if (this.mo){
 			NPV[0] = NPV[0]/(double) numMC;
 			NPV[1] = NPV[1]/(double) numMC;
-			for (int m = 0; m < metricweights.length; m++) {
-				System.out.print(" | " + metricweights[m] + " | ");
+			for (int m = 0; m < optimizationWeights.length; m++) {
+				System.out.print(" | " + optimizationWeights[m] + " | ");
 			}
 			System.out.println(" --> | Benefits " + NPV[0] + " | " + " Costs " + NPV[1] + " | ");
 		}
 		else{
 			NPV[0] = NPV[0]/(double) numMC;
-			for (int m = 0; m < metricweights.length; m++) {
-				System.out.print(" | " + metricweights[m] + " | ");
+			for (int m = 0; m < optimizationWeights.length; m++) {
+				System.out.print(" | " + optimizationWeights[m] + " | ");
 			}
 			System.out.println(" --> Benefits " + NPV[0] + " | ");
 		}
@@ -920,8 +931,6 @@ public class Market {
 		//this.metric.setTurbulence(turbulence / (double) this.getSteps());
 		//this.metric.setFinaBuys(this.getCustomers());
 		
-		
-		return NPV;
 	}
 	/* ----------- Display Methods -------------------*/
 	public void display(){
