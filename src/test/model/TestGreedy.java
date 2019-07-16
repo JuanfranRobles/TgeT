@@ -5,7 +5,8 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import configuration.Reader;
-import model.Market;
+import simulator.Simulator;
+import socialnetwork.SocialNetwork;
 
 public class TestGreedy {
 	
@@ -78,10 +79,9 @@ public class TestGreedy {
 																	
 	public static void main(String args[]){
 		FileWriter fw = null;
-		Market market;
+		Simulator simulator; 
 		Reader reader;
 		int maxTargets;
-		double [] result; 
 		double [] weights;
 		try {
 		for(int network=0; network < experimentConfigurationFiles.length; network++) {    
@@ -91,9 +91,10 @@ public class TestGreedy {
 	            fw.write("Greedy experiments over " + NETWORK_DIRS[network] + "\n");
 	            fw.write("-------------------------------------------------------" + "\n");
 	            fw.write("\n");
-	            market = new Market(experimentConfigurationFiles[network][exp]);
+	            simulator = new Simulator(experimentConfigurationFiles[network][exp]);
 	            reader = new Reader(experimentConfigurationFiles[network][exp]);
-	            maxTargets = (int)(market.getSocialNetwork().getNumNodes() * reader.getParameterDouble("targets_ratio"));
+	            maxTargets = (int)(new SocialNetwork(reader.getParameterString("network_path")).getNumNodes() *
+	            				   reader.getParameterDouble("targets_ratio"));
 	            for(int gredParams=0; gredParams < greedyParameters.length; gredParams++) {
 	            	fw.write("--- Parameters: " + Arrays.toString(greedyParameters[gredParams]) + " ------ " + "\n");
 	            	fw.write("--- Results found ---" + "\n");
@@ -104,12 +105,15 @@ public class TestGreedy {
 		            							 greedyParameters[gredParams][1],
 		            							 greedyParameters[gredParams][2],
 		            							 (double) numSeeds};
-		            	result = market.run(weights);
-		            	fw.write(Integer.toString(numSeeds) + ", " + Double.toString(result[0]) + ", " + Double.toString(result[1]) + "\n");
+		        		simulator.setOptParameters(weights);
+		        		simulator.simulateModel();
+		            	fw.write(Integer.toString(numSeeds) + ", " + Double.toString(simulator.getBenefits()) + ", " + Double.toString(simulator.getCosts()) + "\n");
 		            }
+		            fw.flush();
 	            }
 	            fw.write("\n");
-	            fw.close();			}
+	            fw.close();			
+	            }
 		}
 		
 		

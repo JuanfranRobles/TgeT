@@ -6,6 +6,7 @@ import java.util.Arrays;
 
 import configuration.Reader;
 import model.Market;
+import simulator.Simulator;
 
 public class TestRandom {
 	
@@ -78,7 +79,7 @@ public class TestRandom {
 																	
 	public static void main(String args[]){
 		FileWriter fw = null;
-		Market market;
+		Simulator simulator; 
 		Reader reader;
 		int maxTargets;
 		double [] result; 
@@ -91,7 +92,7 @@ public class TestRandom {
 	            fw.write("Greedy experiments over " + NETWORK_DIRS[network] + "\n");
 	            fw.write("-------------------------------------------------------" + "\n");
 	            fw.write("\n");
-	            market = new Market(experimentConfigurationFiles[network][exp]);
+	            simulator = new Simulator(experimentConfigurationFiles[network][exp]);
 	            market.setRandomSeedSelection(true);
 	            reader = new Reader(experimentConfigurationFiles[network][exp]);
 	            maxTargets = (int)(market.getSocialNetwork().getNumNodes() * reader.getParameterDouble("targets_ratio"));
@@ -105,8 +106,9 @@ public class TestRandom {
 		            							 greedyParameters[gredParams][1],
 		            							 greedyParameters[gredParams][2],
 		            							 (double) numSeeds};
-		            	result = market.run(weights);
-		            	fw.write(Integer.toString(numSeeds) + ", " + Double.toString(result[0]) + ", " + Double.toString(result[1]) + "\n");
+		            	simulator.setOptParameters(weights);
+		        		simulator.simulateModel();
+		            	fw.write(Integer.toString(numSeeds) + ", " + Double.toString(simulator.getBenefits()) + ", " + Double.toString(simulator.getCosts()) + "\n");
 		            }
 	            }
 	            fw.write("\n");

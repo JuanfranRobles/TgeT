@@ -115,7 +115,7 @@ public class Market {
 		extended = this.configuration.getParameterBoolean("extended_model");
 		optimization = this.configuration.getParameterBoolean("optimize");
 		mo = this.configuration.getParameterBoolean("multiobjective");
-		statistics = new Statistics(this);		
+		statistics = new Statistics(this);	
 	}
 	
 	/* -------------- Methods -------------------- */
@@ -831,12 +831,11 @@ public class Market {
 				updateStatistics(freqStep);	
 				// Increase freqStep
 				freqStep++;
+				/**
+				 * Calculate utilities and uncertainties. 
+				 */
+				this.calculateutilsanduncts(utilities, uncertainties);
 			}
-			/**
-			 * Calculate utilities and uncertainties. 
-			 */
-			this.calculateutilsanduncts(utilities, uncertainties);
-			
 			// Calculating NPV for benefits and costs. 
 			double [] values = this.NPV(step, pastChoices);
 			NPV[0] += values[0];
