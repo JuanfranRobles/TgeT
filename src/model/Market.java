@@ -18,18 +18,17 @@
 package model;
 
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.TreeMap;
 
 import configuration.Reader;
+import model.statistics.OptimizationStatistics;
 import model.statistics.Statistics;
 import model.statistics.StatisticsFunctions;
+import optimization.OptimizationParameters;
 import socialnetwork.SocialNetwork;
 import util.SeedContainer;
-import util.SynchronizedMersenneTwister;
 import util.Util;
 import util.random.Randomizer;
 import util.random.RandomizerFactory;
@@ -89,7 +88,7 @@ public class Market {
 	private boolean randomSeedSelection = false; 
 	// Optional parameters. Only activated when optimization 
 	// flag is true.
-	private double [] optimizationWeights; 
+	private OptimizationParameters optimizationParameters; 
 	
 	/* -------------- Constructors ------------------- */
 	
@@ -116,9 +115,7 @@ public class Market {
 		extended = this.configuration.getParameterBoolean("extended_model");
 		optimization = this.configuration.getParameterBoolean("optimize");
 		mo = this.configuration.getParameterBoolean("multiobjective");
-		statistics = new Statistics(this);
-		numMC = this.configuration.getParameterInteger("monte_carlos");
-		
+		statistics = new Statistics(this);		
 	}
 	
 	/* -------------- Methods -------------------- */
@@ -219,6 +216,10 @@ public class Market {
 		return this.time;
 	}
 	
+	public int getStationality() {
+		return stationality;
+	}
+
 	public boolean getModelType(){
 		return this.type;
 	}
@@ -235,6 +236,18 @@ public class Market {
 	
 	/* ------------------------ Methods ---------------------- */
 	
+	public Statistics getStatistics() {
+		return statistics;
+	}
+
+	public OptimizationParameters getOptimizationParameters() {
+		return optimizationParameters;
+	}
+
+	public void setOptimizationParameters(OptimizationParameters optimizationParameters) {
+		this.optimizationParameters = optimizationParameters;
+	}
+
 	public boolean isRandomSeedSelection() {
 		return randomSeedSelection;
 	}
@@ -248,7 +261,13 @@ public class Market {
 			consumptions[c.getIdentifier()] = c.getPurchase();
 		}
 	}
-	
+	private int [] getConsumptions(){
+		int [] consumptions = new int[this.getCustomers().length];
+		for(Customer c: this.getCustomers()){
+			consumptions[c.getIdentifier()] = c.getPurchase();
+		}
+		return consumptions;
+	}
 	private void setUpRandomGenerator(int seedId) {
 		g = RandomizerFactory.createRandomizer(RandomizerAlgorithm.XOR_SHIFT_128_PLUS_FAST, SeedContainer.getSeed(seedId)); 
 	}
@@ -258,38 +277,13 @@ public class Market {
 	 * @param g Random number generator.
 	 */
 	public void setUpModel(){
-		
 		// Initializing customers and products
 		// Products first as customer need to know how many are in the market.
 		for(int p = 0; p < this.getProducts().length; p++){
 			Product aux = new Product(Integer.toString(p));
 			double pquality = g.nextDouble();
-			if (!this.toOptimize()){
-				aux.setQuality(pquality);
-				if (product_visibility < 2)
-					aux.setVisibility(product_visibility);
-				else {
-					aux.setVisibility(g.nextInt(3));
-				}
-			}
-			else{
-				if (p != this.getProducts().length - 1){
-					aux.setQuality(pquality);
-					if (product_visibility < 2)
-						aux.setVisibility(product_visibility);
-					else {
-						aux.setVisibility(g.nextInt(3));
-					}
-				}
-				else{
-					aux.setQuality(g.nextDouble());
-					if (product_visibility < 2)
-						aux.setVisibility(product_visibility);
-					else {
-						aux.setVisibility(g.nextInt(3));
-					}
-				}
-			}
+			aux.setQuality(pquality);
+			aux.setVisibility(product_visibility);
 			this.setProduct(p, aux);						
 		}
 		// Next, initialize customers.
@@ -379,11 +373,12 @@ public class Market {
 			// +- .1 from the customer social preferences.
 			for(Integer c: this.getCustomer(cid).getContacts()){
 				// If is a close friend.
-				if (Math.abs(this.getCustomer(cid).getProductPreference(pid) - this.getCustomer(c).getProductPreference(pid)) <= 0.2)	
+				if (Math.abs(this.getCustomer(cid).getProductPreference(pid) - this.getCustomer(c).getProductPreference(pid)) <= 0.1)	
 					// If is consuming the same product.
 					numcontacts += 1;
-					if (this.getCustomer(c).getPurchase() == pid)
+					if (this.getCustomer(c).getPurchase() == pid) {
 						consumingthesame += 1;
+					}
 			}
 		}
 		else if (this.getProduct(pid).getVisibility().equals("normal")){
@@ -684,78 +679,27 @@ public class Market {
 	}
 	
 	/* -------------- Engine ---------------------- */
-	public void run(){
-		
-		// Initializing the model.
-		this.setUpModel();
-		
-		// Structures for turbulence metric.
-		int [] pastchoices = new int [this.getCustomers().length];
-		int [] nextchoices = new int [this.getCustomers().length];
-		double turbulence = 0.0;
-		
-		// Variable for Gini coefficient.
-		double gini = 0.0;
-				
-		double [] [] utilities = new double [this.getCustomers().length] [this.getProducts().length];
-		double [] [] uncertainties = new double [this.getCustomers().length] [this.getProducts().length];
-		
-		// Time control.
-		long start = System.currentTimeMillis();;
-		
-		for(int step = 0; step < this.getSteps(); step++){
-
-			if(step == 0){
-				this.calculateutilsanduncts(utilities, uncertainties);
-			}
-			
-			this.setConsumptions(pastchoices); // Setting past choices. 
-			
-			if (this.getExtended()){
-				this.wordOfMouth();
-				this.decayStage();
-			}
-			
-			this.consumptionProcess(utilities, uncertainties, step);				
-			
-			this.setConsumptions(nextchoices); // Setting next choices.
-			
-			// Calculating turbulence.
-			statistics.setTurbulence(StatisticsFunctions.calculateTurbulence(pastchoices, nextchoices), step);
-			// Calculating buy probabilities.
-			this.statistics.setFinalBuyProb(this.getCustomers(), step);
-			
-			this.calculateutilsanduncts(utilities, uncertainties);
-			
-			// Calculating Gini.
-			statistics.setGini(StatisticsFunctions.calculateGini(this.getCustomers()), step);
-
-		}
-		statistics.setExecutionTime(System.currentTimeMillis() - start);
-	}
 	/**------- Methods for viral marketing optimization ------------ */
-	private int [] selectSeeds(double [] metricweights){
+	private int [] selectSeeds(){
 		double w = 0.0;
         int popsize = sn.getNumNodes();
 	
         Map<Integer, Double> seedQueue = new TreeMap<>();
         
         for(int node = 0; node < popsize; node++){
-            w = (metricweights [0] * sn.getNetworkMetrics().getNormNodeDegMetric(node) +  
-            	  metricweights [1] * sn.getNetworkMetrics().getNormNodeTstepsMetric(node) +
-            	  metricweights [2] * sn.getNetworkMetrics().getNormNodeCcMetric(node));
+            w = (optimizationParameters.getDegreeWeight() * sn.getNetworkMetrics().getNormNodeDegMetric(node) +  
+        		 optimizationParameters.getNeighborhoudWeight() * sn.getNetworkMetrics().getNormNodeTstepsMetric(node) +
+        		 optimizationParameters.getClusteringCoefficientWeight() * sn.getNetworkMetrics().getNormNodeCcMetric(node));
  
             seedQueue.put(node, w);
         }
         // Descending order. 
 		TreeMap<Integer, Double> sortedSeeds = new TreeMap<>(util.Util.sortByValue(seedQueue));
-		int toselect = (int) metricweights [metricweights.length - 1];
-		
-		int [] selected = new int [toselect];
+		int [] selected = new int [optimizationParameters.getNumTargets()];
 		int cont = 0; 
 		
 		for (Map.Entry<Integer, Double> entrySet : sortedSeeds.entrySet()) {
-		    if(cont < toselect){
+		    if(cont < optimizationParameters.getNumTargets()){
 		    	selected [cont] = (entrySet.getKey());
 		        cont++;
 		    }
@@ -771,14 +715,14 @@ public class Market {
 	}
 	
 	/**------- Methods for viral marketing optimization ------------ */
-	private int [] selectSeedsAtRandom(int numSeeds){
+	private int [] selectSeedsAtRandom(){
 		int [] customers = new int [this.getCustomers().length];
 		for(int i=0; i < this.getCustomers().length; i++) {
 			customers[i] = i; 
 		}
 		customers = Util.RandomizeArray(customers);
-		int [] selected = new int [numSeeds]; 
-		System.arraycopy(customers, 0, selected, 0, numSeeds);
+		int [] selected = new int [optimizationParameters.getNumTargets()]; 
+		System.arraycopy(customers, 0, selected, 0, optimizationParameters.getNumTargets());
 		return selected;
 	}
 	private double [] NPV(int day, int [] lastElection){
@@ -803,7 +747,8 @@ public class Market {
 		
 		double benfs = (double) numadopters * Math.pow(0.9, (day));
 		double costs = ((double) numseeds * (1.0/8.0)) * Math.pow(0.9, (day));
-		
+//		System.out.println("Day: " + day + " Adopters: " + numadopters + " Seeds: " + numseeds);
+//		System.out.println("Products: " + this.getProducts().length);
 		if (this.mo){
 			npv = new double [2];
 			npv[0] = benfs;
@@ -816,121 +761,101 @@ public class Market {
 		return npv;
 	}
 
-	public void run(){
-		
-		// Time control.
-//		double start;
-//		double end;
-//		double total = 0.0;
-		
-		// NPV variable.
-		double [] NPV;
-		
-		if (this.mo)
-			NPV = new double [2];
-		else
-			NPV = new double [1];
-					
-		for(int mc = 0; mc < numMC; mc++) {
-			// Initializing the model.
-			this.setUpRandomGenerator(mc);
-			this.setUpModel();
-			int cs = 0;
-			int [] selectedSeeds; 
-			
-			if(this.isRandomSeedSelection()) {
-				selectedSeeds = selectSeedsAtRandom((int)optimizationWeights[optimizationWeights.length - 1]);
-			}
-			else {
-				selectedSeeds = selectSeeds(optimizationWeights);
-			}
-			// If we will optimize the model we need to initialize the seeds
-			for (Integer seed: selectedSeeds){
-				this.getCustomer(seed).setSeed();
-				this.getCustomer(seed).setPurchase(this.getProducts().length - 1);
-				cs++;
-			}
-			
-			// Structures for turbulence metric.
-			int [] pastchoices = new int [this.getCustomers().length];
-			int [] nextchoices = new int [this.getCustomers().length];
-			double turbulence = 0.0;
-			
-			// Variable for Gini coefficient.
-			double gini = 0.0;
-					
-			double [] [] utilities = new double [this.getCustomers().length] [this.getProducts().length];
-			double [] [] uncertainties = new double [this.getCustomers().length] [this.getProducts().length];
-
-			for(int step = 1; step < this.getSteps(); step++){
-				//System.out.println("Step " + step);
-				//start = System.currentTimeMillis();
-				if(step == 1){
-					this.calculateutilsanduncts(utilities, uncertainties);
-				}
-				
-				this.setConsumptions(pastchoices); // Setting past choices. 
-				
-				if (this.getExtended()){
-					this.wordOfMouth();
-					this.decayStage();
-				}
-	
-				if ((step % stationality) == 0){
-					this.consumptionProcess(utilities, uncertainties, step);				
-				}
-				
-				this.setConsumptions(nextchoices); // Setting next choices.
-				
-				statistics.setFinaBuys(this.getCustomers(), step);
-	
-				// Calculating turbulence.
-				turbulence += metric.calculateTurbulence(pastchoices, nextchoices);
-				// Calculating buy probabilities.
-				this.metric.setFinalBuyProb(this.getCustomers());
-				
-				this.calculateutilsanduncts(utilities, uncertainties);
-				
-				// Calculating Gini coefficient using the last 10 executions.
-				if (step > this.getSteps() - 10)
-					gini += metric.calculateGini(this.getCustomers());
-				
-				//end = System.currentTimeMillis();
-				//System.out.println("Time step: " + (end - start) / 1000.0);
-				//total += (end - start) / 1000.0;
-				// Calculating NPV
-				
-				if (this.mo){
-					double [] values = this.NPV(step, pastchoices);
-					NPV[0] += values[0];
-					NPV[1] += values[1];
-				}
-				else{
-					NPV[0] += this.NPV(step, pastchoices)[0];
-				}
-			}
+	public void run(int monteCarloId){
+		// Starting time measurement. 
+		long startTime = System.currentTimeMillis();
+		// Setting up random number generator using 
+		// Monte-Carlo identifier to set the random generator
+		// seed. 
+		this.setUpRandomGenerator(monteCarloId);
+		// Setting up model. 
+		this.setUpModel();
+		// Structure to store the indexes of the agents which 
+		// are selected into targeting process. 
+		int [] selectedSeeds; 
+		// Targeting process: 
+		// 1) Random (without using weights for local network metrics). 
+		// 2) Sorting consumers using weight for network metrics and then targeting.  
+		if(this.isRandomSeedSelection()) {
+			selectedSeeds = selectSeedsAtRandom();
 		}
-				
-		if (this.mo){
-			NPV[0] = NPV[0]/(double) numMC;
-			NPV[1] = NPV[1]/(double) numMC;
-			for (int m = 0; m < optimizationWeights.length; m++) {
-				System.out.print(" | " + optimizationWeights[m] + " | ");
-			}
-			System.out.println(" --> | Benefits " + NPV[0] + " | " + " Costs " + NPV[1] + " | ");
+		else {
+			selectedSeeds = selectSeeds();
 		}
-		else{
-			NPV[0] = NPV[0]/(double) numMC;
-			for (int m = 0; m < optimizationWeights.length; m++) {
-				System.out.print(" | " + optimizationWeights[m] + " | ");
-			}
-			System.out.println(" --> Benefits " + NPV[0] + " | ");
+		// If simulation is launched for a optimization, then initialize the seeds. 
+		for (Integer seed: selectedSeeds){
+			this.getCustomer(seed).setSeed();
+			this.getCustomer(seed).setPurchase(this.getProducts().length - 1);
 		}
-		//this.metric.setExecutionTime(total);
-		//this.metric.setGini(gini / 10.0);
-		//this.metric.setTurbulence(turbulence / (double) this.getSteps());
-		//this.metric.setFinaBuys(this.getCustomers());
-		
+		// Variables to store past and actual products selection. 
+		int [] pastChoices = new int [this.getCustomers().length];
+		int [] nextChoices = new int [this.getCustomers().length];
+		/**
+		 * Setting up Consumat model parameters such as utilities and uncertainties for consumer 
+		 * selection. 
+		 */
+		double [] [] utilities = new double [this.getCustomers().length] [this.getProducts().length];
+		double [] [] uncertainties = new double [this.getCustomers().length] [this.getProducts().length];
+		/**
+		 * Initialize utilities and uncertainties. 
+		 */
+		this.calculateutilsanduncts(utilities, uncertainties);
+		// Variable to control which step the statistics need to be updated. 
+		int freqStep = 0; 
+		// Variable for NPV values
+		double [] NPV = new double[2];
+		/**
+		 * Starting simulation process.
+		 */
+		for(int step = 0; step < this.getSteps(); step++){
+			// Setting past choices
+			this.setConsumptions(pastChoices);
+			/**
+			 * If the model is extended using word-of-mouth and awareness filters 
+			 * then run diffusion processes.  
+			 */
+			if (this.getExtended()){
+				this.wordOfMouth();
+				this.decayStage();
+			}
+			/**
+			 * Launch consumption progress when actual step fits 
+			 * consumption frequency. 
+			 */
+			if ((step % stationality) == 0 && step!=0){
+				this.consumptionProcess(utilities, uncertainties, freqStep);
+				this.setConsumptions(nextChoices);
+				/**
+				 * Update consumer statistics. 
+				 */
+				updateStatistics(freqStep);	
+				// Increase freqStep
+				freqStep++;
+			}
+			/**
+			 * Calculate utilities and uncertainties. 
+			 */
+			this.calculateutilsanduncts(utilities, uncertainties);
+			
+			// Calculating NPV for benefits and costs. 
+			double [] values = this.NPV(step, pastChoices);
+			NPV[0] += values[0];
+			NPV[1] += values[1];
+		}
+		System.out.println("Benefits: " + NPV[0] + " -  Costs: " + NPV[1]);
+		statistics.setOptimizationStatistics(new OptimizationStatistics(NPV[0], NPV[1]));
+		statistics.setExecutionTime(System.currentTimeMillis() - startTime);
+	}
+	/**
+	 * Updates consumption statistics in a given step. 
+	 * @param step
+	 */
+	private void updateStatistics(int step) {
+		statistics.setConsumerChoiceByStep(this.getCustomers(), step);
+		statistics.setProductSelection(this.getCustomers(), step);
+		statistics.setAwarenessRatio(getCustomers(), step);
+		// Calculating Gini.
+		statistics.setGini(StatisticsFunctions.calculateGini(this.getCustomers()), step);
 	}
 	/* ----------- Display Methods -------------------*/
 	public void display(){
@@ -939,7 +864,7 @@ public class Market {
 		System.out.println("| -- This simulation uses a social network with the following structure and values --- |");
 		this.getSocialNetwork().displayInformation();
 		System.out.println("| -- In the market there are " + this.getCustomers().length + " customers --|");
-		System.out.println("| -- ** Where " + this.metric.getMeanCustomers() + " perform as customers --|");
+		System.out.println("| -- ** Where " + this.statistics.getMeanCustomers() + " perform as customers --|");
 		System.out.println("| -- There are " + this.getProducts().length + " products involved in the market --|");
 		
 		if (this.getExtended())
@@ -954,18 +879,18 @@ public class Market {
 			System.out.println("| -- Where are only simulating market dynamics -- |");
 		System.out.println("| ---------- --------------- ------------- |");
 		System.out.println("| ---------- EXECUTION INDICATORS ------------- |");
-		System.out.println("| -- Total execution time per day of consumption: " + this.metric.getExecutionTime() + " --|");
+		System.out.println("| -- Total execution time per day of consumption: " + this.statistics.getExecutionTime() + " --|");
 		System.out.println("| ---------- ----------------- ------------- |");
 		System.out.println("| ---------- PERFORMANCE INDICATORS ------------- |");
 		System.out.println("| -- After execution we obtain the following values for Gini coefficient and turbulence metrics: --|");
-		System.out.println("| -- Gini: " + Double.toString(this.metric.getGini()) + " --|");
-		System.out.println("| -- Turbulence: " + Double.toString(this.metric.getTurbulence()) + " --|");
+		System.out.println("| -- Gini: " + Double.toString(this.statistics.getAggregatedGiniCoefficient()) + " --|");
+		System.out.println("| -- Turbulence: " + Double.toString(this.statistics.getAggregatedTurbulence()) + " --|");
 		
 		System.out.println("| -- Referring to products: --|");
-		System.out.println("| -- The amount of sales after the simulation is: --|" + Arrays.toString(metric.getFinalBuys()) + " --|");
-		System.out.println("| -- The percentage of buys during the simulation is: --|" + Arrays.toString(metric.getFinalBuyProbs()) + " --|");
+		System.out.println("| -- The amount of sales after the simulation is: --|" + Arrays.toString(statistics.lastProductSelection()) + " --|");
+		System.out.println("| -- The percentage of buys during the simulation is: --|" + Arrays.toString(statistics.getFinalBuyProbs()[this.getSteps()-1]) + " --|");
 		System.out.println("| -- The percentage in the decission heuristic usege during "
-				+ "the simulation is: --|" + Arrays.toString(metric.getHeuristicsUse()) + " --|");
+				+ "the simulation is: --|" + Arrays.toString(statistics.getHeuristicsUse()) + " --|");
 		System.out.println("| ---------- -------------------- ------------- |");
 	}
 }

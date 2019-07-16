@@ -36,4 +36,21 @@ public class MonteCarloStatistics {
 		}
 		return cost/(double)monteCarloStatistics.length;
 	}
+	public double computeBenefCostsCombination() {
+		double comb = 0.0;
+		for(int mc=0; mc<monteCarloStatistics.length; mc++) {
+			comb += monteCarloStatistics[mc].getOptimizationStatistics().combineStatistics();
+		}
+		return comb/(double)monteCarloStatistics.length;
+	}
+	public void setStatistics(Statistics stats, int mcIndex) {
+		monteCarloStatistics[mcIndex] = stats;
+	}
+	public double computeTotalSimulationTime() {
+		long simtime = 0;
+		for(int mc=0; mc<monteCarloStatistics.length; mc++) {
+			simtime += monteCarloStatistics[mc].getExecutionTime();
+		}
+		return (double)(simtime/(double)monteCarloStatistics.length);
+	}
 }

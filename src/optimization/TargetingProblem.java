@@ -7,7 +7,8 @@ import org.uma.jmetal.problem.impl.AbstractDoubleProblem;
 import org.uma.jmetal.solution.DoubleSolution;
 
 import configuration.Reader;
-import model.Market;
+import simulator.Simulator;
+import socialnetwork.SocialNetwork;
 
 public class TargetingProblem extends AbstractDoubleProblem{
 	
@@ -16,7 +17,7 @@ public class TargetingProblem extends AbstractDoubleProblem{
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	private final Market market;
+	private final Simulator simulator;
 	
 	public TargetingProblem(int nvars){
 		this(nvars, "TargetingViralMarketing");
@@ -28,9 +29,10 @@ public class TargetingProblem extends AbstractDoubleProblem{
 	    
 	    Reader reader = new Reader(paramsfile);
 	    
-	    this.market = new Market(paramsfile);
+	    this.simulator = new Simulator(paramsfile);
 	    
-		double maxTargets = (double) this.market.getSocialNetwork().getNumNodes() * reader.getParameterDouble("targets_ratio");
+	    int nodes = new SocialNetwork(reader.getParameterString("network_path")).getNumNodes();
+		double maxTargets = (double) nodes * reader.getParameterDouble("targets_ratio");
 		
 		List<Double> lowerLimit = new ArrayList<>(getNumberOfVariables()) ;
 	    List<Double> upperLimit = new ArrayList<>(getNumberOfVariables()) ;
@@ -59,10 +61,10 @@ public class TargetingProblem extends AbstractDoubleProblem{
 			//	" -|- " + Double.toString(wcc) + " -|- " + Integer.toString((int) fs) + " ]");
 		
 		double [] ws = new double [] {wd, w2s, wcc, fs};
+		simulator.setOptParameters(ws);
+		simulator.simulateModel();
 		
-		double [] NPV = market.run(ws);
-		
-		solution.setObjective(0, -1.0 * NPV[0]);
+		solution.setObjective(0, -1.0 * simulator.getBenefistsMinusCostsCombination());
 		
 	}
 

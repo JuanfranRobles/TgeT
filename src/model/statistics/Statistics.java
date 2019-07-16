@@ -38,7 +38,7 @@ public class Statistics {
 	/**
 	 * The product selection by agent for each step. 
 	 */
-	private int [][] finalbuys = new int [0][0];
+	private int [][] consumerChoiceByStep = new int [0][0];
 	/**
 	 * Stores the probability for being selected for each market 
 	 * product at each simulation step. 
@@ -64,12 +64,14 @@ public class Statistics {
 	
 	/** BUILDERS **/
 	public Statistics(Market m) {
-		int marketSteps = m.getSteps();
+		int marketSteps = (int)Math.floor(m.getSteps() / m.getStationality());
 		int marketProducts = m.getProducts().length;
+		int marketConsumers = m.getCustomers().length;
 		// Setting indicators (Gini coefficient and turbulence). 
 		gini = new double[marketSteps];
 		turbulence = new double[marketSteps];
 		// Setting structures to store statistics. 
+		consumerChoiceByStep = new int[marketConsumers][marketSteps];
 		productSelectionByStep = new int[marketProducts][marketSteps];
 		finalbuyprob = new double[marketProducts][marketSteps];
 		heuristicsuse = new double[marketProducts][marketSteps];
@@ -153,6 +155,11 @@ public class Statistics {
 	public void setMeanCustomers(double cs, int step){
 		this.meancustomers[step] = cs;
 	}
+	public void setConsumerChoiceByStep(Customer [] cs, int step) {
+		for(Customer c: cs){
+			consumerChoiceByStep[c.getIdentifier()][step] = c.getPurchase();
+		}
+	}
 	public double getExecutionTime(){
 		return this.executiontime;
 	}
@@ -165,10 +172,10 @@ public class Statistics {
 		return this.turbulence[step];
 	}
 	
-	public int [][] getFinalBuys(){
-		return this.finalbuys;
+	public int [][] getConsumerChoiceByStep(){
+		return this.consumerChoiceByStep;
 	}
-	
+
 	public double [][] getFinalBuyProbs(){
 		return this.finalbuyprob;
 	}
