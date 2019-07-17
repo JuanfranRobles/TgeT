@@ -7,6 +7,7 @@ import java.util.Arrays;
 import configuration.Reader;
 import model.Market;
 import simulator.Simulator;
+import socialnetwork.SocialNetwork;
 
 public class TestRandom {
 	
@@ -87,29 +88,25 @@ public class TestRandom {
 		try {
 		for(int network=0; network < experimentConfigurationFiles.length; network++) {    
 			for(int exp=0; exp < experimentConfigurationFiles[network].length; exp++) {
-				fw = new FileWriter(RESULTS_PATH + NETWORK_DIRS[network] + "/" + NETWORK_DIRS[network] + "_" + Integer.toString(exp) + ".txt");
-				fw.write("-------------------------------------------------------" + "\n");
-	            fw.write("Greedy experiments over " + NETWORK_DIRS[network] + "\n");
-	            fw.write("-------------------------------------------------------" + "\n");
-	            fw.write("\n");
+//				fw = new FileWriter(RESULTS_PATH + NETWORK_DIRS[network] + "/" + NETWORK_DIRS[network] + "_" + Integer.toString(exp) + ".txt");
+//				fw.write("-------------------------------------------------------" + "\n");
+//	            fw.write("Greedy experiments over " + NETWORK_DIRS[network] + "\n");
+//	            fw.write("-------------------------------------------------------" + "\n");
+//	            fw.write("\n");
 	            simulator = new Simulator(experimentConfigurationFiles[network][exp]);
-	            market.setRandomSeedSelection(true);
 	            reader = new Reader(experimentConfigurationFiles[network][exp]);
-	            maxTargets = (int)(market.getSocialNetwork().getNumNodes() * reader.getParameterDouble("targets_ratio"));
-	            for(int gredParams=0; gredParams < greedyParameters.length; gredParams++) {
-	            	fw.write("--- Parameters: " + Arrays.toString(greedyParameters[gredParams]) + " ------ " + "\n");
-	            	fw.write("--- Results found ---" + "\n");
-	            	fw.write("\n");
-	            	fw.write("Seeds, Benefit, Cost" + "\n");
-		            for(int numSeeds=1; numSeeds < maxTargets; numSeeds++) {
-		            	weights = new double [] {greedyParameters[gredParams][0], 
-		            							 greedyParameters[gredParams][1],
-		            							 greedyParameters[gredParams][2],
-		            							 (double) numSeeds};
-		            	simulator.setOptParameters(weights);
-		        		simulator.simulateModel();
-		            	fw.write(Integer.toString(numSeeds) + ", " + Double.toString(simulator.getBenefits()) + ", " + Double.toString(simulator.getCosts()) + "\n");
-		            }
+	            maxTargets = (int)(new SocialNetwork(reader.getParameterString("network_path")).getNumNodes() *
+     				   reader.getParameterDouble("targets_ratio"));
+            	fw.write("Seeds, Benefit, Cost," + "\n");
+	            for(int numSeeds=1; numSeeds < maxTargets; numSeeds++) {
+	            	weights = new double [] {greedyParameters[gredParams][0], 
+	            							 greedyParameters[gredParams][1],
+	            							 greedyParameters[gredParams][2],
+	            							 (double) numSeeds};
+	            	simulator.setOptParameters(weights);
+	        		simulator.simulateModel();
+	            	fw.write(Integer.toString(numSeeds) + ", " + Double.toString(simulator.getBenefits()) + ", " + Double.toString(simulator.getCosts()) + "\n");
+	            }
 	            }
 	            fw.write("\n");
 	            fw.close();			}

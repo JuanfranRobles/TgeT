@@ -83,23 +83,24 @@ public class TestGreedy {
 		Reader reader;
 		int maxTargets;
 		double [] weights;
+		
 		try {
 		for(int network=0; network < experimentConfigurationFiles.length; network++) {    
 			for(int exp=0; exp < experimentConfigurationFiles[network].length; exp++) {
-				fw = new FileWriter(RESULTS_PATH + NETWORK_DIRS[network] + "/" + NETWORK_DIRS[network] + "_" + Integer.toString(exp) + ".txt");
-				fw.write("-------------------------------------------------------" + "\n");
-	            fw.write("Greedy experiments over " + NETWORK_DIRS[network] + "\n");
-	            fw.write("-------------------------------------------------------" + "\n");
-	            fw.write("\n");
+				fw = new FileWriter(RESULTS_PATH + NETWORK_DIRS[network] + "/" + NETWORK_DIRS[network] + "_" + Integer.toString(exp) + ".xls");
+//				fw.write("-------------------------------------------------------" + "\n");
+//	            fw.write("Greedy experiments over " + NETWORK_DIRS[network] + "\n");
+//	            fw.write("-------------------------------------------------------" + "\n");
+//	            fw.write("\n");
 	            simulator = new Simulator(experimentConfigurationFiles[network][exp]);
 	            reader = new Reader(experimentConfigurationFiles[network][exp]);
 	            maxTargets = (int)(new SocialNetwork(reader.getParameterString("network_path")).getNumNodes() *
 	            				   reader.getParameterDouble("targets_ratio"));
 	            for(int gredParams=0; gredParams < greedyParameters.length; gredParams++) {
-	            	fw.write("--- Parameters: " + Arrays.toString(greedyParameters[gredParams]) + " ------ " + "\n");
-	            	fw.write("--- Results found ---" + "\n");
-	            	fw.write("\n");
-	            	fw.write("Seeds, Benefit, Cost" + "\n");
+//	            	fw.write("--- Parameters: " + Arrays.toString(greedyParameters[gredParams]) + " ------ " + "\n");
+//	            	fw.write("--- Results found ---" + "\n");
+//	            	fw.write("\n");
+	            	fw.write("Seeds, Benefit, Cost," + "\n");
 		            for(int numSeeds=1; numSeeds < maxTargets; numSeeds++) {
 		            	weights = new double [] {greedyParameters[gredParams][0], 
 		            							 greedyParameters[gredParams][1],

@@ -1,5 +1,6 @@
 package util;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.Random;
@@ -56,6 +57,45 @@ public class Util {
  
 		return array;
 	}
+    
+    public static ArrayList<ArrayList<Integer>> fastNonDominatedSorting(double [][] solutions){
+    	ArrayList<ArrayList<Integer>> paretoFront = new ArrayList<>();
+    	ArrayList<ArrayList<Integer>> sp = new ArrayList<>();
+    	int [] n = new int[solutions.length];
+    	for(int s=0; s<solutions.length; s++) {
+    		sp.add(new ArrayList<Integer>());
+    		for(int i=s+1; i<solutions.length-1; i++) {
+    			if((solutions[s][0]>solutions[i][0] && solutions[s][1]<=solutions[i][1]) ||
+    			   (solutions[s][0]>=solutions[i][0] && solutions[s][1]<solutions[i][1])) {
+    				sp.get(s).add(i);
+    			}
+    			else if((solutions[i][0]>solutions[s][0] && solutions[i][1]<=solutions[s][1]) ||
+    					(solutions[i][0]>=solutions[s][0] && solutions[i][1]<solutions[s][1])) {
+    				n[s]++;
+    			}
+    		}
+    		if(n[s] == 0) {
+    			if(paretoFront.isEmpty()) {
+    				paretoFront.add(new ArrayList<Integer>());
+    			}
+    			paretoFront.get(0).add(s);
+    		}
+    	}
+    	int frontPos = 1; 
+    	while(!paretoFront.get(frontPos-1).isEmpty()) {
+    		paretoFront.add(new ArrayList<Integer>());
+    		for(Integer s: paretoFront.get(frontPos-1)) {
+    			for(Integer q: sp.get(s)) {
+    				n[q]--;
+    				if(n[q] == 0) {
+    					paretoFront.get(frontPos).add(q);
+    				}
+    			}
+    		}
+    		frontPos++;
+    	}
+    	return paretoFront;
+    }
 }
 
 /**
