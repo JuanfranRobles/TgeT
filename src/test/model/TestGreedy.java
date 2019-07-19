@@ -98,38 +98,36 @@ public class TestGreedy {
 		}
 		try {
 			for(Integer exptID: exps) {
-			// For each configuration file
-			for(int exp=0; exp < exps.length; exp++) {
-				// Create a new simulator using the configuration file of the desired network 
-	            simulator = new Simulator(experimentConfigurationFiles[exptID][exp]);
-	            reader = new Reader(experimentConfigurationFiles[exptID][exp]);
-	            maxTargets = (int)(new SocialNetwork(reader.getParameterString("network_path")).getNumNodes() *
-	            				   reader.getParameterDouble("targets_ratio"));
-	            // For each weight configuration
-	            for(int gredParams=0; gredParams < greedyParameters.length; gredParams++) {
-	            	fw = new FileWriter(RESULTS_PATH + NETWORK_DIRS[exptID] + "/" + NETWORK_DIRS[exptID] + "_" + Integer.toString(exp) + "_ConfigParams_" + gredParams  + ".xls");
+				// For each configuration file
+				for(int exp=0; exp < exps.length; exp++) {
+					// Create a new simulator using the configuration file of the desired network 
+		            simulator = new Simulator(experimentConfigurationFiles[exptID][exp]);
+		            reader = new Reader(experimentConfigurationFiles[exptID][exp]);
+		            maxTargets = (int)(new SocialNetwork(reader.getParameterString("network_path")).getNumNodes() *
+		            				   reader.getParameterDouble("targets_ratio"));
+		            // For each weight configuration
+		            double [][] results = new double [maxTargets*greedyParameters.length][2];
+		            fw = new FileWriter(RESULTS_PATH + NETWORK_DIRS[exptID] + "/" + NETWORK_DIRS[exptID] + "_" + Integer.toString(exp) + ".xls");
 	            	fw.write("Seeds, Benefit, Cost," + "\n");
-	            	double [][] results = new double [maxTargets][2];
-		            for(int numSeeds=1; numSeeds <= maxTargets; numSeeds++) {
-		            	weights = new double [] {greedyParameters[gredParams][0], 
-		            							 greedyParameters[gredParams][1],
-		            							 greedyParameters[gredParams][2],
-		            							 (double) numSeeds};
-		        		simulator.setOptParameters(weights);
-		        		simulator.simulateModel();
-		        		results[numSeeds-1][0] = simulator.getBenefits();
-		        		results[numSeeds-1][1] = simulator.getCosts();
+		            for(int gredParams=0; gredParams < greedyParameters.length; gredParams++) {
+			            for(int numSeeds=1; numSeeds <= maxTargets; numSeeds++) {
+			            	weights = new double [] {greedyParameters[gredParams][0], 
+			            							 greedyParameters[gredParams][1],
+			            							 greedyParameters[gredParams][2],
+			            							 (double) numSeeds};
+			        		simulator.setOptParameters(weights);
+			        		simulator.simulateModel();
+			        		results[numSeeds-1][0] = simulator.getBenefits();
+			        		results[numSeeds-1][1] = simulator.getCosts();
+			            }
 		            }
 		            ArrayList<Integer> sols = Util.fastNonDominatedSorting(results).get(0);
-		            for(Integer s: sols) {
-		            	fw.write(Integer.toString(s) + ", " + Double.toString(results[s][0]) + ", " + Double.toString(results[s][1]) + "\n");
-		            }
-		            fw.close();		
-	            }
-	      
-            }
-		}
-		
+					for(Integer s: sols) {
+						fw.write(Integer.toString(s) + ", " + Double.toString(results[s][0]) + ", " + Double.toString(results[s][1]) + "\n");
+					}
+			        fw.close();
+		        }
+			}
 		
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
