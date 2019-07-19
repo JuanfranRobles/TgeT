@@ -841,7 +841,9 @@ public class Market {
 			NPV[0] += values[0];
 			NPV[1] += values[1];
 		}
-		System.out.println("Benefits: " + NPV[0] + " -  Costs: " + NPV[1]);
+		System.out.print("Seeds: " + optimizationParameters.getNumTargets() + " Metric weights: " + optimizationParameters.getDegreeWeight() + " | " + optimizationParameters.getNeighborhoudWeight() + " | " + optimizationParameters.getClusteringCoefficientWeight());
+		System.out.println(" --> | Benefits " + NPV[0] + " | " + " Costs " + NPV[1] + " | ");
+//		System.out.println("Benefits: " + NPV[0] + " -  Costs: " + NPV[1]);
 		statistics.setOptimizationStatistics(new OptimizationStatistics(NPV[0], NPV[1]));
 		statistics.setExecutionTime(System.currentTimeMillis() - startTime);
 	}

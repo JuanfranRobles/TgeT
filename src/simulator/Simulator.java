@@ -41,7 +41,7 @@ public class Simulator {
 		}catch(Exception e) {
 			System.out.println("Simulation failed");
 		}finally {
-			System.out.println("Done");
+//			System.out.println("Done");
 		}
 	}
 	public double getBenefits() {

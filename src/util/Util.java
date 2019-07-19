@@ -62,23 +62,25 @@ public class Util {
     	ArrayList<ArrayList<Integer>> paretoFront = new ArrayList<>();
     	ArrayList<ArrayList<Integer>> sp = new ArrayList<>();
     	int [] n = new int[solutions.length];
-    	for(int s=0; s<solutions.length; s++) {
+    	for(int p=0; p<solutions.length; p++) {
     		sp.add(new ArrayList<Integer>());
-    		for(int i=s+1; i<solutions.length-1; i++) {
-    			if((solutions[s][0]>solutions[i][0] && solutions[s][1]<=solutions[i][1]) ||
-    			   (solutions[s][0]>=solutions[i][0] && solutions[s][1]<solutions[i][1])) {
-    				sp.get(s).add(i);
-    			}
-    			else if((solutions[i][0]>solutions[s][0] && solutions[i][1]<=solutions[s][1]) ||
-    					(solutions[i][0]>=solutions[s][0] && solutions[i][1]<solutions[s][1])) {
-    				n[s]++;
+    		for(int q=0; q<solutions.length; q++) {
+    			if(p!=q) {
+	    			if((solutions[p][0]>solutions[q][0] && solutions[p][1]<=solutions[q][1]) ||
+	    			   (solutions[p][0]>=solutions[q][0] && solutions[p][1]<solutions[q][1])) {
+	    				sp.get(p).add(q);
+	    			}
+	    			else if((solutions[q][0]>solutions[p][0] && solutions[q][1]<=solutions[p][1]) ||
+	    					(solutions[q][0]>=solutions[p][0] && solutions[q][1]<solutions[p][1])) {
+	    				n[p]++;
+	    			}
     			}
     		}
-    		if(n[s] == 0) {
+    		if(n[p] == 0) {
     			if(paretoFront.isEmpty()) {
     				paretoFront.add(new ArrayList<Integer>());
     			}
-    			paretoFront.get(0).add(s);
+    			paretoFront.get(0).add(p);
     		}
     	}
     	int frontPos = 1; 
